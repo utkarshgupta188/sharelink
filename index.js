@@ -103,25 +103,40 @@ app.post('/api/announce-file', (req, res) => {
 
 // Download request endpoint
 app.post('/api/request-download', (req, res) => {
-  const { otp } = req.body;
-  
-  if (!otp) {
-    return res.status(400).json({ error: 'OTP is required' });
-  }
+  try {
+    const { otp, downloaderId } = req.body;
+    
+    if (!otp) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'OTP is required' 
+      });
+    }
 
-  const fileInfo = fileOwners.get(otp);
-  if (!fileInfo) {
-    return res.status(404).json({ error: 'Invalid or expired OTP' });
-  }
+    const fileInfo = fileOwners.get(otp);
+    if (!fileInfo) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'Invalid or expired OTP' 
+      });
+    }
 
-  console.log(`📥 Download requested for: ${fileInfo.fileName} - OTP: ${otp}`);
-  
-  res.json({
-    fileName: fileInfo.fileName,
-    fileSize: fileInfo.fileSize,
-    fileType: fileInfo.fileType,
-    message: 'File info retrieved successfully'
-  });
+    console.log(`📥 Download requested for: ${fileInfo.fileName} - OTP: ${otp} by ${downloaderId || 'anonymous'}`);
+    
+    res.json({
+      success: true,
+      fileName: fileInfo.fileName,
+      fileSize: fileInfo.fileSize,
+      fileType: fileInfo.fileType,
+      message: 'File info retrieved successfully'
+    });
+  } catch (error) {
+    console.error('❌ Download request error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error during download request'
+    });
+  }
 });
 
 // Socket.io handling for P2P coordination

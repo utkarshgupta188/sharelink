@@ -464,7 +464,7 @@
                 console.log('🔍 Requesting file from P2P network, OTP:', otp);
                 
                 // First verify OTP with server, then request P2P transfer
-                const response = await fetch('/api/request-file', {
+                const response = await fetch('/api/request-download', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
