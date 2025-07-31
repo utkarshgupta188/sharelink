@@ -8,7 +8,7 @@
     "start": "node dist/index.js",
     "dev": "npx ts-node src/index.ts",
     "demo": "npx ts-node src/index.ts --demo",
-    "copy-public": "cp -r public dist/ || xcopy public dist\\public\\ /E /I /Y",
+    "copy-public": "node -e \"const fs=require('fs'); const path=require('path'); if(!fs.existsSync('dist/public')) fs.mkdirSync('dist/public', {recursive:true}); fs.copyFileSync('public/index.html', 'dist/public/index.html');\"",
     "clean": "npx rimraf dist",
     "prebuild": "npm run clean",
     "test": "echo \"Error: no test specified\" && exit 1"
