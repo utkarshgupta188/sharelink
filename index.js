@@ -62,31 +62,43 @@ app.get('/api/health', (req, res) => {
 
 // File announcement endpoint
 app.post('/api/announce-file', (req, res) => {
-  const { fileName, fileSize, fileType } = req.body;
-  
-  if (!fileName || !fileSize) {
-    return res.status(400).json({ error: 'Missing required fields' });
+  try {
+    const { fileName, fileSize, fileType } = req.body;
+    
+    if (!fileName || !fileSize) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Missing required fields: fileName and fileSize are required' 
+      });
+    }
+
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const ownerId = Math.random().toString(36).substring(2, 15);
+    
+    fileOwners.set(otp, {
+      ownerId,
+      fileName,
+      fileSize,
+      fileType: fileType || 'application/octet-stream',
+      announcedAt: new Date()
+    });
+
+    console.log(`📢 File announced: ${fileName} (${formatFileSize(fileSize)}) - OTP: ${otp}`);
+    
+    res.json({ 
+      success: true,
+      otp, 
+      ownerId,
+      message: 'File announced successfully' 
+    });
+  } catch (error) {
+    console.error('❌ File announcement error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error during file announcement'
+    });
   }
-
-  // Generate 6-digit OTP
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
-  const ownerId = Math.random().toString(36).substring(2, 15);
-  
-  fileOwners.set(otp, {
-    ownerId,
-    fileName,
-    fileSize,
-    fileType: fileType || 'application/octet-stream',
-    announcedAt: new Date()
-  });
-
-  console.log(`📢 File announced: ${fileName} (${formatFileSize(fileSize)}) - OTP: ${otp}`);
-  
-  res.json({ 
-    otp, 
-    ownerId,
-    message: 'File announced successfully' 
-  });
 });
 
 // Download request endpoint
