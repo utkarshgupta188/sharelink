@@ -1,0 +1,1138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>P2P File Sharing</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #fafafa;
+        }
+        
+        .section h2 {
+            color: #555;
+            margin-top: 0;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        
+        input[type="file"], input[type="text"], select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 10px;
+            margin-top: 10px;
+        }
+        
+        button:hover {
+            background-color: #0056b3;
+        }
+        
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        
+        .otp-display {
+            background-color: #e7f3ff;
+            border: 2px solid #007bff;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 10px 0;
+            text-align: center;
+            font-size: 16px;
+            color: #007bff;
+        }
+        
+        .otp-code {
+            font-size: 28px;
+            font-weight: bold;
+            letter-spacing: 4px;
+            margin: 10px 0;
+            color: #007bff;
+        }
+        
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        
+        .status.success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        
+        .status.error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        
+        .status.info {
+            background-color: #cce7ff;
+            border: 1px solid #99d6ff;
+            color: #004085;
+        }
+        
+        .peers-list {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            background: white;
+        }
+        
+        .peer-item {
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+        }
+        
+        .peer-item:hover {
+            background-color: #f0f0f0;
+        }
+        
+        .peer-item.selected {
+            background-color: #007bff;
+            color: white;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            background-color: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .progress-fill {
+            height: 20px;
+            background-color: #28a745;
+            transition: width 0.3s ease;
+            text-align: center;
+            line-height: 20px;
+            color: white;
+            font-size: 12px;
+        }
+        
+        .connection-status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            z-index: 1000;
+        }
+        
+        .connection-status.connected {
+            background-color: #28a745;
+            color: white;
+        }
+        
+        .connection-status.disconnected {
+            background-color: #dc3545;
+            color: white;
+        }
+        
+        #filesList {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            background: white;
+        }
+        
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .file-info {
+            flex-grow: 1;
+        }
+        
+        .file-name {
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .file-size {
+            color: #666;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="connection-status" id="connectionStatus">Connecting...</div>
+    
+    <div class="container">
+        <h1>🔗 True P2P File Sharing</h1>
+        
+        <!-- File Upload Section -->
+        <div class="section">
+            <h2>📤 Share a File (P2P)</h2>
+            <div class="form-group">
+                <label for="fileInput">Select File to Share via P2P:</label>
+                <input type="file" id="fileInput" accept="*/*">
+            </div>
+            <button onclick="uploadFile()">Announce File & Generate OTP</button>
+            <div id="uploadStatus"></div>
+            <div id="otpDisplay"></div>
+        </div>
+        
+        <!-- File Download Section -->
+        <div class="section">
+            <h2>📥 Download via P2P</h2>
+            <div class="form-group">
+                <label for="otpInput">Enter P2P OTP:</label>
+                <input type="text" id="otpInput" placeholder="Enter 6-digit OTP" maxlength="6">
+            </div>
+            <button onclick="verifyOTP()">Connect & Download via P2P</button>
+            <div id="downloadStatus"></div>
+            <div id="downloadProgress"></div>
+        </div>
+        
+        <!-- Transfer Status Section -->
+        <div class="section">
+            <h2>📊 Transfer Status</h2>
+            <div id="transferStatus"></div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        // Initialize Socket.IO for real-time P2P coordination
+        const socket = io();
+        
+        // P2P state management
+        let currentOTP = null;
+        const localFiles = new Map(); // Store files locally for P2P
+        
+        // Connection status
+        socket.on('connect', () => {
+            console.log('✅ Socket.IO connected:', socket.id);
+            updateConnectionStatus(true);
+        });
+        
+        socket.on('disconnect', () => {
+            console.log('❌ Socket.IO disconnected');
+            updateConnectionStatus(false);
+        });
+        
+        socket.on('connect_error', (error) => {
+            console.error('🔌 Socket.IO connection error:', error);
+            updateConnectionStatus(false);
+        });
+        
+        function updateConnectionStatus(connected) {
+            const status = document.getElementById('connectionStatus');
+            if (connected) {
+                status.textContent = '✅ Connected';
+                status.className = 'connection-status connected';
+            } else {
+                status.textContent = '❌ Disconnected';
+                status.className = 'connection-status disconnected';
+            }
+        }
+        
+        // Global P2P File sharing system
+        
+        // Global variables for P2P
+        // let localFiles = new Map(); // Files stored locally in browser - already declared above
+        let peerConnections = new Map(); // WebRTC connections
+        // let currentOTP = null; // already declared above
+
+        // WebRTC configuration with enhanced settings for production deployment
+        const rtcConfig = {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' },
+                { urls: 'stun:stun2.l.google.com:19302' },
+                { urls: 'stun:stun3.l.google.com:19302' },
+                { urls: 'stun:stun4.l.google.com:19302' }
+            ],
+            iceCandidatePoolSize: 10, // Generate more ICE candidates for better connectivity
+            bundlePolicy: 'max-bundle',
+            rtcpMuxPolicy: 'require',
+            iceTransportPolicy: 'all'
+        };
+
+        async function uploadFile() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                showStatus('uploadStatus', 'Please select a file first.', 'error');
+                return;
+            }
+            
+            // Check file size (1GB limit for P2P)
+            const maxSize = 1024 * 1024 * 1024; // 1GB in bytes
+            console.log(`📏 File size: ${file.size} bytes (${formatFileSize(file.size)})`);
+            
+            if (file.size > maxSize) {
+                showStatus('uploadStatus', `File too large! Maximum size is 1GB. Your file is ${formatFileSize(file.size)}.`, 'error');
+                return;
+            }
+            
+            try {
+                showStatus('uploadStatus', `Announcing ${file.name} (${formatFileSize(file.size)}) to P2P network...`, 'info');
+                console.log('� Announcing file to P2P network:', {
+                    name: file.name,
+                    size: file.size,
+                    type: file.type
+                });
+                
+                // Convert file to ArrayBuffer for P2P transfer
+                const arrayBuffer = await file.arrayBuffer();
+                
+                // Announce file to P2P network (no upload to server)
+                const response = await fetch('/api/announce-file', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        fileName: file.name,
+                        fileType: file.type,
+                        fileSize: file.size,
+                        uploaderId: socket.id || 'anonymous'
+                    })
+                });
+                
+                console.log('📡 Announcement response status:', response.status);
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Announcement failed with status ${response.status}: ${errorText}`);
+                }
+                
+                const result = await response.json();
+                console.log('📋 Server response:', result);
+                
+                if (result.success) {
+                    // Store file locally for P2P sharing
+                    localFiles.set(result.otp, {
+                        file: arrayBuffer,
+                        fileName: file.name,
+                        fileType: file.type,
+                        fileSize: file.size,
+                        announcedAt: new Date()
+                    });
+                    
+                    currentOTP = result.otp;
+                    
+                    // Also announce via Socket.IO for real-time P2P coordination
+                    socket.emit('announce-file', {
+                        otp: result.otp,
+                        fileName: file.name,
+                        fileType: file.type,
+                        fileSize: file.size
+                    });
+                    console.log('📡 File also announced via Socket.IO for P2P coordination');
+                    
+                    showStatus('uploadStatus', 'File announced to P2P network! File stays on your device.', 'success');
+                    displayOTP(result.otp);
+                    console.log('✅ File announced successfully, OTP:', result.otp);
+                    
+                    // Announce to connected peers via WebSocket
+                    socket.emit('announce-file', {
+                        otp: result.otp,
+                        fileName: file.name,
+                        fileSize: file.size,
+                        fileType: file.type
+                    });
+                } else {
+                    showStatus('uploadStatus', 'Announcement failed: ' + result.error, 'error');
+                    console.error('❌ Announcement failed:', result.error);
+                }
+                
+            } catch (error) {
+                showStatus('uploadStatus', 'Announcement error: ' + error.message, 'error');
+                console.error('❌ Announcement error:', error);
+            }
+        }
+        
+        // Generate 6-digit OTP locally
+        function generateOTP() {
+            return Math.floor(100000 + Math.random() * 900000).toString();
+        }
+        
+        // True P2P OTP verification and file download
+        async function verifyOTP() {
+            const otp = document.getElementById('otpInput').value.trim();
+            
+            if (!otp || otp.length !== 6) {
+                showStatus('downloadStatus', 'Please enter a valid 6-digit OTP.', 'error');
+                return;
+            }
+            
+            try {
+                showStatus('downloadStatus', 'Searching P2P network for file...', 'info');
+                console.log('🔍 Requesting file from P2P network, OTP:', otp);
+                
+                // First verify OTP with server, then request P2P transfer
+                const response = await fetch('/api/request-file', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        otp: otp,
+                        downloaderId: socket.id || 'anonymous'
+                    })
+                });
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Request failed with status ${response.status}: ${errorText}`);
+                }
+                
+                const result = await response.json();
+                console.log('📋 Server response:', result);
+                
+                if (result.success) {
+                    showStatus('downloadStatus', 'OTP verified! Searching for file owner...', 'info');
+                    
+                    // Now request file via P2P
+                    socket.emit('request-file', { otp });
+                    
+                    // Set up timeout for P2P request
+                    const requestTimeout = setTimeout(() => {
+                        showStatus('downloadStatus', 'File request timed out. File owner may be offline.', 'error');
+                    }, 30000); // 30 second timeout
+                    
+                    // Listen for file request responses
+                    socket.once('file-request-failed', (data) => {
+                        clearTimeout(requestTimeout);
+                        showStatus('downloadStatus', data.error || 'File not found in P2P network.', 'error');
+                        console.error('❌ P2P file request failed:', data.error);
+                    });
+                    
+                    socket.once('file-transfer-approved', (data) => {
+                        clearTimeout(requestTimeout);
+                        console.log('✅ File transfer approved by owner:', data.ownerId);
+                        showStatus('downloadStatus', 'File owner approved transfer. Establishing P2P connection...', 'info');
+                        initiateWebRTCConnection(data.ownerId, otp);
+                    });
+                    
+                    socket.once('file-transfer-rejected', (data) => {
+                        clearTimeout(requestTimeout);
+                        showStatus('downloadStatus', 'File owner rejected the transfer request.', 'error');
+                        console.error('❌ File transfer rejected:', data.reason);
+                    });
+                } else {
+                    showStatus('downloadStatus', result.error || 'Invalid or expired OTP.', 'error');
+                    console.error('❌ OTP verification failed:', result.error);
+                }
+                
+            } catch (error) {
+                showStatus('downloadStatus', 'Error requesting file: ' + error.message, 'error');
+                console.error('❌ Download error:', error);
+            }
+        }
+
+        // WebRTC P2P connection setup
+        async function initiateWebRTCConnection(ownerId, otp) {
+            try {
+                console.log(`🤝 Initiating WebRTC connection to ${ownerId}`);
+                
+                const peerConnection = new RTCPeerConnection(rtcConfig);
+                peerConnections.set(ownerId, peerConnection);
+                
+                // Set up ICE candidate handling
+                peerConnection.onicecandidate = (event) => {
+                    if (event.candidate) {
+                        console.log('🧊 Sending ICE candidate to', ownerId);
+                        socket.emit('webrtc-ice-candidate', {
+                            targetId: ownerId,
+                            candidate: event.candidate
+                        });
+                    }
+                };
+                
+                // Set up data channel for file transfer with enhanced configuration for faster downloads
+                const dataChannel = peerConnection.createDataChannel('fileTransfer', {
+                    ordered: true,
+                    maxPacketLifeTime: 30000, // 30 second timeout (can't use both maxRetransmits and maxPacketLifeTime)
+                    maxRetransmitTime: 30000
+                });
+                
+                // Configure for high-speed transfers
+                dataChannel.binaryType = 'arraybuffer';
+                
+                dataChannel.onopen = () => {
+                    console.log('📡✅ Data channel opened on requester side');
+                    showStatus('downloadStatus', 'P2P connection established. Requesting file...', 'info');
+                    
+                    // Immediately send request when channel opens
+                    try {
+                        if (dataChannel.readyState === 'open') {
+                            dataChannel.send(JSON.stringify({ type: 'request-file', otp }));
+                            console.log('📤 File request sent via data channel');
+                        } else {
+                            console.error('❌ Data channel not ready:', dataChannel.readyState);
+                            showStatus('downloadStatus', 'Connection error: Data channel not ready', 'error');
+                        }
+                    } catch (error) {
+                        console.error('❌ Error sending file request:', error);
+                        showStatus('downloadStatus', 'Error sending file request: ' + error.message, 'error');
+                    }
+                };
+                
+                dataChannel.onclose = () => {
+                    console.log('📡❌ Data channel closed on requester side');
+                };
+                
+                dataChannel.onerror = (error) => {
+                    console.error('📡💥 Data channel error on requester side:', error);
+                };
+                
+                dataChannel.onmessage = (event) => {
+                    handleP2PFileData(event.data, otp);
+                };
+                
+                // Create offer
+                const offer = await peerConnection.createOffer();
+                await peerConnection.setLocalDescription(offer);
+                
+                // Send offer via signaling server
+                socket.emit('webrtc-offer', {
+                    targetId: ownerId,
+                    offer: offer,
+                    otp: otp
+                });
+                
+                console.log('📤 WebRTC offer sent');
+                
+            } catch (error) {
+                console.error('❌ WebRTC connection error:', error);
+                showStatus('downloadStatus', 'Failed to establish P2P connection: ' + error.message, 'error');
+            }
+        }
+
+        // Handle incoming P2P file data with optimized processing
+        let fileTransferState = {};
+        
+        function handleP2PFileData(data, otp) {
+            try {
+                if (typeof data === 'string') {
+                    const message = JSON.parse(data);
+                    if (message.type === 'file-info') {
+                        console.log('📄 Received file info:', message);
+                        showStatus('downloadStatus', `Downloading ${message.fileName} (${formatFileSize(message.fileSize)})...`, 'info');
+                        
+                        // Store file info for proper download with optimized buffer management
+                        fileTransferState[otp] = {
+                            fileName: message.fileName,
+                            fileType: message.fileType,
+                            fileSize: message.fileSize,
+                            receivedChunks: [],
+                            totalReceived: 0,
+                            startTime: Date.now(),
+                            lastProgressUpdate: 0,
+                            chunkBuffer: [] // Buffer for faster processing
+                        };
+                        console.log(`🎯 File transfer initialized for ${message.fileName}, expecting ${message.fileSize} bytes`);
+                        return;
+                    }
+                }
+                
+                // Handle binary file data chunks with optimized processing
+                if (!fileTransferState[otp]) {
+                    console.error('❌ No file info found for OTP:', otp);
+                    console.error('Available transfer states:', Object.keys(fileTransferState));
+                    return;
+                }
+                
+                const state = fileTransferState[otp];
+                
+                // Ensure we're dealing with ArrayBuffer for consistent byte counting
+                let chunkSize = 0;
+                if (data instanceof ArrayBuffer) {
+                    chunkSize = data.byteLength;
+                } else if (data.byteLength !== undefined) {
+                    chunkSize = data.byteLength;
+                } else if (data.size !== undefined) {
+                    chunkSize = data.size;
+                } else {
+                    chunkSize = data.length || 0;
+                }
+                
+                // Add to buffer for batch processing
+                state.chunkBuffer.push(data);
+                state.totalReceived += chunkSize;
+                
+                // Process chunks in batches for better performance (every 10 chunks or when complete)
+                const shouldProcessNow = state.chunkBuffer.length >= 10 || state.totalReceived >= state.fileSize;
+                
+                if (shouldProcessNow) {
+                    // Move buffered chunks to main array
+                    state.receivedChunks.push(...state.chunkBuffer);
+                    state.chunkBuffer = [];
+                }
+                
+                const progress = Math.round((state.totalReceived / state.fileSize) * 100);
+                const receivedMB = (state.totalReceived / (1024 * 1024)).toFixed(1);
+                const totalMB = (state.fileSize / (1024 * 1024)).toFixed(1);
+                const elapsed = (Date.now() - state.startTime) / 1000;
+                const speedMBps = elapsed > 0 ? (receivedMB / elapsed).toFixed(1) : '0.0';
+                
+                // Update progress less frequently for better performance (every 2% or every 2 seconds)
+                const now = Date.now();
+                const timeSinceLastUpdate = now - state.lastProgressUpdate;
+                const shouldUpdateProgress = progress % 2 === 0 || timeSinceLastUpdate > 2000 || state.totalReceived >= state.fileSize;
+                
+                if (shouldUpdateProgress) {
+                    console.log(`📥 Received chunks: ${state.receivedChunks.length + state.chunkBuffer.length}, total: ${receivedMB}MB/${totalMB}MB (${progress}%) @ ${speedMBps} MB/s`);
+                    showStatus('downloadStatus', `Downloading ${state.fileName}... ${progress}% (${receivedMB}MB/${totalMB}MB) @ ${speedMBps} MB/s`, 'info');
+                    state.lastProgressUpdate = now;
+                }
+                
+                // Check if we have all the data (with a small tolerance for rounding errors)
+                if (state.totalReceived >= state.fileSize) {
+                    // Process any remaining buffered chunks
+                    if (state.chunkBuffer.length > 0) {
+                        state.receivedChunks.push(...state.chunkBuffer);
+                        state.chunkBuffer = [];
+                    }
+                    
+                    const elapsed = (Date.now() - state.startTime) / 1000;
+                    const avgSpeed = (state.fileSize / (1024 * 1024) / elapsed).toFixed(1);
+                    console.log(`✅ All file data received in ${elapsed.toFixed(1)}s @ ${avgSpeed} MB/s`);
+                    console.log(`📊 Received ${state.receivedChunks.length} chunks totaling ${state.totalReceived} bytes`);
+                    
+                    // Process file creation immediately without delay
+                    try {
+                        // Combine all chunks with proper MIME type
+                        const blob = new Blob(state.receivedChunks, { type: state.fileType });
+                        console.log(`🔧 Created blob: ${blob.size} bytes, type: ${blob.type}`);
+                        
+                        // Trigger download with proper filename and type
+                        const url = URL.createObjectURL(blob);
+                        const link = document.createElement('a');
+                        link.href = url;
+                        link.download = state.fileName; // Use original filename
+                        link.style.display = 'none';
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        URL.revokeObjectURL(url);
+                        
+                        showStatus('downloadStatus', `File "${state.fileName}" downloaded successfully via P2P! (${elapsed.toFixed(1)}s @ ${avgSpeed} MB/s)`, 'success');
+                        console.log('💾 P2P file download complete:', state.fileName, blob.size, 'bytes');
+                        
+                        // Clean up
+                        delete fileTransferState[otp];
+                        document.getElementById('otpInput').value = '';
+                    } catch (blobError) {
+                        console.error('❌ Error creating blob:', blobError);
+                        showStatus('downloadStatus', 'Error creating downloaded file: ' + blobError.message, 'error');
+                    }
+                }
+                
+            } catch (error) {
+                console.error('❌ Error handling P2P file data:', error);
+                showStatus('downloadStatus', 'Error processing downloaded file: ' + error.message, 'error');
+            }
+        }
+        
+        // Download file directly in browser
+        function downloadFileDirectly(file, fileName) {
+            const url = URL.createObjectURL(file);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = fileName;
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+        
+        // Socket event handlers for P2P file sharing
+        socket.on('file-request-received', (data) => {
+            const { otp, requesterId, fileName } = data;
+            console.log(`📥 File request received for ${fileName} from ${requesterId}`);
+            
+            // Create a custom approval dialog
+            showFileRequestApproval(fileName, otp, requesterId);
+        });
+
+        function showFileRequestApproval(fileName, otp, requesterId) {
+            // Remove any existing approval dialog
+            const existingDialog = document.getElementById('approval-dialog');
+            if (existingDialog) {
+                existingDialog.remove();
+            }
+
+            // Create approval dialog
+            const dialog = document.createElement('div');
+            dialog.id = 'approval-dialog';
+            dialog.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: white;
+                border: 2px solid #333;
+                border-radius: 10px;
+                padding: 20px;
+                box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+                z-index: 10000;
+                max-width: 400px;
+                text-align: center;
+            `;
+            
+            dialog.innerHTML = `
+                <h3>🔔 File Transfer Request</h3>
+                <p>Someone wants to download:</p>
+                <p><strong>"${fileName}"</strong></p>
+                <p>Allow this transfer?</p>
+                <div style="margin-top: 20px;">
+                    <button id="approve-btn" style="background: #4CAF50; color: white; padding: 10px 20px; margin: 5px; border: none; border-radius: 5px; cursor: pointer;">
+                        ✅ Allow
+                    </button>
+                    <button id="reject-btn" style="background: #f44336; color: white; padding: 10px 20px; margin: 5px; border: none; border-radius: 5px; cursor: pointer;">
+                        ❌ Reject
+                    </button>
+                </div>
+            `;
+            
+            // Add backdrop
+            const backdrop = document.createElement('div');
+            backdrop.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.5);
+                z-index: 9999;
+            `;
+            
+            document.body.appendChild(backdrop);
+            document.body.appendChild(dialog);
+            
+            // Handle approval
+            document.getElementById('approve-btn').onclick = () => {
+                socket.emit('approve-transfer', { otp, requesterId });
+                console.log('✅ File transfer approved');
+                backdrop.remove();
+                dialog.remove();
+            };
+            
+            // Handle rejection
+            document.getElementById('reject-btn').onclick = () => {
+                socket.emit('reject-transfer', { otp, requesterId, reason: 'User declined' });
+                console.log('❌ File transfer rejected');
+                backdrop.remove();
+                dialog.remove();
+            };
+            
+            // Auto-reject after 30 seconds
+            setTimeout(() => {
+                if (document.getElementById('approval-dialog')) {
+                    socket.emit('reject-transfer', { otp, requesterId, reason: 'Request timed out' });
+                    console.log('⏰ File transfer request timed out');
+                    backdrop.remove();
+                    dialog.remove();
+                }
+            }, 30000);
+        }
+
+        // WebRTC signaling handlers
+        socket.on('webrtc-offer-received', async (data) => {
+            const { senderId, offer, otp } = data;
+            console.log(`🤝 Received WebRTC offer from ${senderId} for OTP ${otp}`);
+            
+            try {
+                const peerConnection = new RTCPeerConnection(rtcConfig);
+                peerConnections.set(senderId, peerConnection);
+                
+                // Set up ICE candidate handling
+                peerConnection.onicecandidate = (event) => {
+                    if (event.candidate) {
+                        console.log('🧊 Sending ICE candidate to', senderId);
+                        socket.emit('webrtc-ice-candidate', {
+                            targetId: senderId,
+                            candidate: event.candidate
+                        });
+                    }
+                };
+                
+                // Set up data channel for file serving
+                peerConnection.ondatachannel = (event) => {
+                    const dataChannel = event.channel;
+                    console.log('📡 Data channel received for file serving, state:', dataChannel.readyState);
+                    
+                    // Enhanced channel configuration for high-speed downloads
+                    dataChannel.binaryType = 'arraybuffer'; // Ensure consistent binary handling
+                    
+                    // Optimize buffer settings for faster receiving
+                    if (dataChannel.bufferedAmountLowThreshold !== undefined) {
+                        dataChannel.bufferedAmountLowThreshold = 1024 * 1024; // 1MB threshold
+                    }
+                    
+                    // Set up channel event handlers
+                    dataChannel.onopen = () => {
+                        console.log('📡✅ Data channel opened for file serving');
+                    };
+                    
+                    dataChannel.onclose = () => {
+                        console.log('📡❌ Data channel closed on file serving side');
+                    };
+                    
+                    dataChannel.onerror = (error) => {
+                        console.error('📡💥 Data channel error on file serving side:', error);
+                        showStatus('uploadStatus', 'Connection error on file serving side', 'error');
+                    };
+                    
+                    dataChannel.onmessage = (event) => {
+                        handleP2PFileRequest(event.data, dataChannel, otp);
+                    };
+                    
+                    // Store data channel for monitoring
+                    peerConnection.dataChannel = dataChannel;
+                };
+                
+                await peerConnection.setRemoteDescription(offer);
+                const answer = await peerConnection.createAnswer();
+                await peerConnection.setLocalDescription(answer);
+                
+                socket.emit('webrtc-answer', {
+                    targetId: senderId,
+                    answer: answer
+                });
+                
+                console.log('📤 WebRTC answer sent to', senderId);
+                
+            } catch (error) {
+                console.error('❌ Error handling WebRTC offer:', error);
+            }
+        });
+
+        socket.on('webrtc-answer-received', async (data) => {
+            const { senderId, answer } = data;
+            console.log(`🤝 Received WebRTC answer from ${senderId}`);
+            
+            const peerConnection = peerConnections.get(senderId);
+            if (peerConnection) {
+                await peerConnection.setRemoteDescription(answer);
+                console.log('✅ WebRTC connection established with', senderId);
+            }
+        });
+
+        socket.on('webrtc-ice-candidate-received', async (data) => {
+            const { senderId, candidate } = data;
+            const peerConnection = peerConnections.get(senderId);
+            if (peerConnection && candidate) {
+                await peerConnection.addIceCandidate(candidate);
+                console.log('🧊 ICE candidate added from', senderId);
+            }
+        });
+
+        // Handle P2P file requests from peers
+        function handleP2PFileRequest(data, dataChannel, otp) {
+            try {
+                const message = JSON.parse(data);
+                if (message.type === 'request-file' && message.otp === otp) {
+                    console.log(`📤 Serving file for OTP: ${otp}, channel state: ${dataChannel.readyState}`);
+                    
+                    const fileData = localFiles.get(otp);
+                    if (!fileData) {
+                        console.error('❌ File not found for OTP:', otp);
+                        showStatus('uploadStatus', 'File not found for transfer', 'error');
+                        return;
+                    }
+                    
+                    // Wait for data channel to be fully open before sending
+                    if (dataChannel.readyState !== 'open') {
+                        console.log('⏳ Data channel not ready, waiting for open event...');
+                        showStatus('uploadStatus', 'Waiting for connection to be ready...', 'info');
+                        
+                        dataChannel.onopen = () => {
+                            console.log('📡 Data channel now open, starting file transfer');
+                            startFileTransfer(dataChannel, fileData, otp);
+                        };
+                        
+                        // Set a timeout in case the channel never opens
+                        setTimeout(() => {
+                            if (dataChannel.readyState !== 'open') {
+                                console.error('❌ Data channel failed to open within timeout');
+                                showStatus('uploadStatus', 'Connection timeout - unable to establish P2P link', 'error');
+                            }
+                        }, 10000); // 10 second timeout
+                        
+                        return;
+                    }
+                    
+                    console.log('📡 Data channel already open, starting file transfer immediately');
+                    startFileTransfer(dataChannel, fileData, otp);
+                }
+            } catch (error) {
+                console.error('❌ Error handling P2P file request:', error);
+                showStatus('uploadStatus', 'Error handling file request: ' + error.message, 'error');
+            }
+        }
+
+        // Separate function to handle the actual file transfer
+        function startFileTransfer(dataChannel, fileData, otp) {
+            // Double-check channel state before starting transfer
+            if (dataChannel.readyState !== 'open') {
+                console.error('❌ Cannot start transfer - data channel not open:', dataChannel.readyState);
+                showStatus('uploadStatus', 'Connection error: Unable to start file transfer', 'error');
+                return;
+            }
+            
+            console.log('📡 Data channel confirmed open, starting file transfer');
+            
+            try {
+                // Send file info first
+                dataChannel.send(JSON.stringify({
+                    type: 'file-info',
+                    fileName: fileData.fileName,
+                    fileSize: fileData.fileSize,
+                    fileType: fileData.fileType
+                }));
+                
+                console.log(`📦 Sending file: ${fileData.fileName} (${formatFileSize(fileData.fileSize)})`);
+                
+                // Send file in chunks with flow control for WebRTC stability
+                // Using optimized 256KB chunks with larger buffering for better performance
+                const chunkSize = 262144; // 256KB chunks for better performance
+                const fileBuffer = fileData.file;
+                const totalChunks = Math.ceil(fileBuffer.byteLength / chunkSize);
+                
+                console.log(`📊 Sending ${totalChunks} chunks of ${formatFileSize(chunkSize)} each`);
+                
+                let chunkIndex = 0;
+                let startTime = Date.now();
+                let isTransferring = true;
+                
+                // Monitor data channel buffer to prevent overflows
+                function canSendMoreData() {
+                    // Increased buffer threshold for better performance: 8MB
+                    const bufferThreshold = 8 * 1024 * 1024; // 8MB
+                    const currentBuffer = dataChannel.bufferedAmount;
+                    const canSend = currentBuffer < bufferThreshold;
+                    
+                    if (!canSend) {
+                        console.log(`⏳ Buffer full: ${currentBuffer} bytes (threshold: ${bufferThreshold})`);
+                    }
+                    
+                    return canSend;
+                }
+                
+                function sendNextChunk() {
+                    // Check if channel is still open and transfer is active
+                    if (!isTransferring || dataChannel.readyState !== 'open') {
+                        console.error('❌ Data channel closed during transfer, state:', dataChannel.readyState);
+                        showStatus('uploadStatus', 'Connection closed during file transfer', 'error');
+                        isTransferring = false;
+                        return;
+                    }
+                    
+                    // Check if we can send more data (buffer management)
+                    if (!canSendMoreData()) {
+                        // Wait longer for buffer to drain when it's full
+                        setTimeout(sendNextChunk, 200); // Increased wait time
+                        return;
+                    }
+                    
+                    if (chunkIndex < totalChunks) {
+                        const start = chunkIndex * chunkSize;
+                        const end = Math.min(start + chunkSize, fileBuffer.byteLength);
+                        const chunk = fileBuffer.slice(start, end);
+                        
+                        try {
+                            // Additional check right before sending
+                            if (dataChannel.bufferedAmount > 4 * 1024 * 1024) { // 4MB safety check
+                                console.log(`⚠️ Buffer getting full (${dataChannel.bufferedAmount} bytes), waiting...`);
+                                setTimeout(sendNextChunk, 150);
+                                return;
+                            }
+                            
+                            dataChannel.send(chunk);
+                            chunkIndex++;
+                            
+                            const progress = Math.round((chunkIndex / totalChunks) * 100);
+                            const transferredBytes = Math.min(chunkIndex * chunkSize, fileBuffer.byteLength);
+                            const transferredMB = (transferredBytes / (1024 * 1024)).toFixed(1);
+                            const elapsed = (Date.now() - startTime) / 1000;
+                            const speedMBps = elapsed > 0 ? (transferredBytes / (1024 * 1024) / elapsed).toFixed(1) : '0.0';
+                            
+                            console.log(`📤 Sent chunk ${chunkIndex}/${totalChunks} (${progress}%) - ${transferredMB}MB @ ${speedMBps} MB/s [Buffer: ${dataChannel.bufferedAmount} bytes]`);
+                            
+                            // Update upload status with progress and speed
+                            showStatus('uploadStatus', `Sending file... ${progress}% (${transferredMB}MB/${formatFileSize(fileBuffer.byteLength)}) @ ${speedMBps} MB/s`, 'info');
+                            
+                            if (chunkIndex < totalChunks) {
+                                // More conservative delay based on buffer size
+                                let delay = 25; // Reduced base delay for faster transfers
+                                if (dataChannel.bufferedAmount > 6 * 1024 * 1024) { // 6MB
+                                    delay = 75;
+                                } else if (dataChannel.bufferedAmount > 4 * 1024 * 1024) { // 4MB
+                                    delay = 50;
+                                }
+                                
+                                setTimeout(sendNextChunk, delay);
+                            } else {
+                                const totalTime = (Date.now() - startTime) / 1000;
+                                const avgSpeed = (fileBuffer.byteLength / (1024 * 1024) / totalTime).toFixed(1);
+                                console.log(`✅ File sent completely via P2P in ${totalTime.toFixed(1)}s @ ${avgSpeed} MB/s`);
+                                showStatus('uploadStatus', `File transferred successfully via P2P! (${totalTime.toFixed(1)}s @ ${avgSpeed} MB/s)`, 'success');
+                                isTransferring = false;
+                            }
+                        } catch (error) {
+                            console.error('❌ Error sending chunk:', error);
+                            
+                            // If it's a queue full error, wait and retry
+                            if (error.message.includes('send queue is full')) {
+                                console.log('🔄 Queue full, waiting before retry...');
+                                setTimeout(sendNextChunk, 300); // Wait longer before retry
+                                return;
+                            }
+                            
+                            showStatus('uploadStatus', 'Error during file transfer: ' + error.message, 'error');
+                            isTransferring = false;
+                        }
+                    }
+                }
+                
+                // Add error handling for data channel
+                dataChannel.onerror = (error) => {
+                    console.error('📡💥 Data channel error during transfer:', error);
+                    showStatus('uploadStatus', 'Data channel error during transfer', 'error');
+                    isTransferring = false;
+                };
+                
+                dataChannel.onclose = () => {
+                    console.log('📡❌ Data channel closed during transfer');
+                    if (isTransferring) {
+                        showStatus('uploadStatus', 'Connection closed during file transfer', 'error');
+                        isTransferring = false;
+                    }
+                };
+                
+                // Start sending chunks with minimal delay for faster startup
+                setTimeout(sendNextChunk, 50); // Reduced from 300ms to 50ms
+                
+            } catch (error) {
+                console.error('❌ Error starting file transfer:', error);
+                showStatus('uploadStatus', 'Error starting file transfer: ' + error.message, 'error');
+            }
+        }
+
+        // Socket event handlers for global notifications
+        socket.on('file-available', (data) => {
+            const { otp, fileName, fileSize, ownerId } = data;
+            if (ownerId !== socket.id) {
+                showStatus('transferStatus', `New file "${fileName}" available on P2P network (${formatFileSize(fileSize)})`, 'info');
+                console.log('📢 File available:', data);
+            }
+        });
+        
+        // Utility functions
+        function showStatus(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+        
+        function displayOTP(otp) {
+            const otpDisplay = document.getElementById('otpDisplay');
+            otpDisplay.innerHTML = `
+                <div class="otp-display">
+                    <div>🔐 Your P2P OTP Code</div>
+                    <div class="otp-code">${otp}</div>
+                    <div style="font-size: 0.9rem; color: #666;">
+                        Share this code for direct P2P download<br>
+                        <strong>File stays on your device • True P2P • Expires in 5 minutes</strong><br>
+                        <small>⚠️ Keep this browser tab open for others to download</small>
+                    </div>
+                </div>
+            `;
+            console.log('🔐 P2P OTP displayed:', otp);
+        }
+        
+        function generateId() {
+            return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        }
+        
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        
+        // Initialize the P2P application
+        window.onload = function() {
+            console.log('🚀 Global P2P File Sharing System initialized');
+        };
+    </script>
+</body>
+</html>
