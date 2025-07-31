@@ -2,8 +2,8 @@ services:
   - type: web
     name: p2p-file-sharing
     env: node
-    buildCommand: npm install && npm run build && ls -la && ls -la dist/
-    startCommand: cd /opt/render/project && node dist/index.js
+    buildCommand: npm install && npm run build && echo "Build complete. Contents:" && ls -la && echo "Dist contents:" && ls -la dist/ && echo "Package.json main field:" && grep -A2 -B2 '"main"' package.json
+    startCommand: npm start
     publishPath: .
     envVars:
       - key: NODE_ENV
