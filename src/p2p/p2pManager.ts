@@ -1,145 +1,145 @@
-interface PeerInfo {
+import { Server, Socket } from 'socket.io';
+import { v4 as uuidv4 } from 'uuid';
+
+interface Peer {
   id: string;
+  socketId: string;
+  username: string;
+  isAuthenticated: boolean;
   connectedAt: Date;
 }
 
-interface FileTransferRequest {
-  senderId: string;
-  receiverId: string;
-  fileId: string;
-  fileName: string;
-  fileSize: number;
-  otp: string;
-}
-
 export class P2PManager {
-  private peers: Map<string, PeerInfo> = new Map();
-  private activeTransfers: Map<string, FileTransferRequest> = new Map();
+  private peers: Map<string, Peer> = new Map();
+  private io: Server;
 
-  constructor() {
-    // Simple constructor without external dependencies
+  constructor(io: Server) {
+    this.io = io;
+    this.setupSocketHandlers();
   }
 
-  // Add a peer to the network
-  addPeer(peerId: string): void {
-    const peerInfo: PeerInfo = {
+  private setupSocketHandlers(): void {
+    this.io.on('connection', (socket: Socket) => {
+      console.log(`Socket connected: ${socket.id}`);
+
+      socket.on('peer:register', (data: { username: string }) => {
+        this.registerPeer(socket, data.username);
+      });
+
+      socket.on('peer:authenticate', (data: { peerId: string; otp: string }) => {
+        this.authenticatePeer(socket, data.peerId, data.otp);
+      });
+
+      socket.on('peer:discover', () => {
+        this.sendPeerList(socket);
+      });
+
+      socket.on('file:share', (data: { fileId: string; targetPeerId: string }) => {
+        this.shareFile(socket, data.fileId, data.targetPeerId);
+      });
+
+      socket.on('disconnect', () => {
+        this.handleDisconnect(socket);
+      });
+    });
+  }
+
+  private registerPeer(socket: Socket, username: string): void {
+    const peerId = uuidv4();
+    const peer: Peer = {
       id: peerId,
+      socketId: socket.id,
+      username,
+      isAuthenticated: false,
       connectedAt: new Date()
     };
-    this.peers.set(peerId, peerInfo);
-    console.log(`Peer ${peerId} connected`);
+
+    this.peers.set(peerId, peer);
+    
+    socket.emit('peer:registered', { peerId });
+    this.broadcastPeerUpdate();
   }
 
-  // Remove a peer from the network
-  removePeer(peerId: string): void {
-    this.peers.delete(peerId);
+  authenticatePeer(socket: Socket, peerId: string, otp: string): boolean {
+    const peer = this.peers.get(peerId);
+    if (!peer || peer.socketId !== socket.id) {
+      socket.emit('auth:failed', { message: 'Invalid peer ID' });
+      return false;
+    }
+
+    // Note: OTP verification would be handled by OTPManager in the main application
+    peer.isAuthenticated = true;
+    socket.emit('auth:success', { peerId });
+    this.broadcastPeerUpdate();
+    return true;
+  }
+
+  private sendPeerList(socket: Socket): void {
+    const authenticatedPeers = Array.from(this.peers.values())
+      .filter(peer => peer.isAuthenticated)
+      .map(peer => ({
+        id: peer.id,
+        username: peer.username,
+        connectedAt: peer.connectedAt
+      }));
+
+    socket.emit('peers:list', { peers: authenticatedPeers });
+  }
+
+  private shareFile(socket: Socket, fileId: string, targetPeerId: string): void {
+    const senderPeer = Array.from(this.peers.values())
+      .find(peer => peer.socketId === socket.id);
     
-    // Clean up active transfers involving this peer
-    for (const [transferId, transfer] of this.activeTransfers.entries()) {
-      if (transfer.senderId === peerId || transfer.receiverId === peerId) {
-        this.activeTransfers.delete(transferId);
-        console.log(`Transfer ${transferId} cancelled due to peer ${peerId} disconnection`);
+    const targetPeer = this.peers.get(targetPeerId);
+
+    if (!senderPeer || !targetPeer || !senderPeer.isAuthenticated || !targetPeer.isAuthenticated) {
+      socket.emit('file:share:failed', { message: 'Invalid peer or not authenticated' });
+      return;
+    }
+
+    // Notify target peer about incoming file
+    this.io.to(targetPeer.socketId).emit('file:incoming', {
+      fileId,
+      fromPeer: {
+        id: senderPeer.id,
+        username: senderPeer.username
       }
+    });
+
+    socket.emit('file:share:initiated', { targetPeerId });
+  }
+
+  private broadcastPeerUpdate(): void {
+    const authenticatedPeers = Array.from(this.peers.values())
+      .filter(peer => peer.isAuthenticated)
+      .map(peer => ({
+        id: peer.id,
+        username: peer.username,
+        connectedAt: peer.connectedAt
+      }));
+
+    this.io.emit('peers:updated', { peers: authenticatedPeers });
+  }
+
+  private handleDisconnect(socket: Socket): void {
+    const peer = Array.from(this.peers.values())
+      .find(p => p.socketId === socket.id);
+
+    if (peer) {
+      this.peers.delete(peer.id);
+      this.broadcastPeerUpdate();
+      console.log(`Peer disconnected: ${peer.username} (${peer.id})`);
     }
-    
-    console.log(`Peer ${peerId} disconnected`);
   }
 
-  // Get list of available peers
-  getAvailablePeers(excludePeerId?: string): PeerInfo[] {
-    return Array.from(this.peers.values())
-      .filter(peer => peer.id !== excludePeerId);
+  getPeer(peerId: string): Peer | undefined {
+    return this.peers.get(peerId);
   }
 
-  // Request file transfer between peers
-  requestFileTransfer(request: FileTransferRequest): boolean {
-    const receiverPeer = this.peers.get(request.receiverId);
-    if (!receiverPeer) {
-      console.log(`Receiver ${request.receiverId} not found`);
-      return false;
-    }
-
-    const transferId = `${request.senderId}-${request.receiverId}-${Date.now()}`;
-    this.activeTransfers.set(transferId, request);
-    
-    console.log(`File transfer requested: ${request.fileName} from ${request.senderId} to ${request.receiverId}`);
-    console.log(`Transfer ID: ${transferId}, OTP: ${request.otp}`);
-    
-    return true;
-  }
-
-  // Accept a file transfer
-  acceptFileTransfer(transferId: string, otp: string): boolean {
-    const transfer = this.activeTransfers.get(transferId);
-    if (!transfer) {
-      console.log(`Transfer ${transferId} not found`);
-      return false;
-    }
-
-    if (transfer.otp !== otp) {
-      console.log(`Invalid OTP for transfer ${transferId}`);
-      return false;
-    }
-
-    console.log(`File transfer ${transferId} accepted`);
-    return true;
-  }
-
-  // Reject a file transfer
-  rejectFileTransfer(transferId: string): boolean {
-    const transfer = this.activeTransfers.get(transferId);
-    if (!transfer) {
-      return false;
-    }
-
-    this.activeTransfers.delete(transferId);
-    console.log(`File transfer ${transferId} rejected`);
-    return true;
-  }
-
-  // Complete a file transfer
-  completeFileTransfer(transferId: string): boolean {
-    const transfer = this.activeTransfers.get(transferId);
-    if (!transfer) {
-      return false;
-    }
-
-    this.activeTransfers.delete(transferId);
-    console.log(`File transfer ${transferId} completed successfully`);
-    return true;
-  }
-
-  // Get active transfers
-  getActiveTransfers(): FileTransferRequest[] {
-    return Array.from(this.activeTransfers.values());
-  }
-
-  // Get peer count
-  getPeerCount(): number {
-    return this.peers.size;
-  }
-
-  // Simulate peer discovery
-  discoverPeers(): PeerInfo[] {
-    console.log(`Discovering peers... Found ${this.peers.size} peers`);
+  getAllPeers(): Peer[] {
     return Array.from(this.peers.values());
   }
-
-  // Simulate file chunk transfer
-  transferFileChunk(transferId: string, chunkIndex: number, totalChunks: number): boolean {
-    const transfer = this.activeTransfers.get(transferId);
-    if (!transfer) {
-      return false;
-    }
-
-    const progress = Math.round((chunkIndex / totalChunks) * 100);
-    console.log(`Transfer ${transferId}: ${progress}% complete (chunk ${chunkIndex}/${totalChunks})`);
-    
-    return true;
-  }
-
-  // Get transfer progress
-  getTransferProgress(transferId: string): number {
+}
     const transfer = this.activeTransfers.get(transferId);
     if (!transfer) {
       return 0;

@@ -1,90 +1,90 @@
-export interface FileInfo {
+import fs from 'fs';
+import path from 'path';
+import { v4 as uuidv4 } from 'uuid';
+
+interface FileMetadata {
   id: string;
-  name: string;
+  originalName: string;
+  filename: string;
+  mimetype: string;
   size: number;
-  mimeType: string;
   uploadedAt: Date;
-  path: string;
+  ownerId: string;
 }
 
 export class FileManager {
-  private filesDir: string;
-  private fileRegistry: Map<string, FileInfo> = new Map();
-  private p2pFiles: Map<string, any> = new Map(); // Store P2P files
+  private files: Map<string, FileMetadata> = new Map();
+  private uploadsDir: string;
 
   constructor() {
-    this.filesDir = './uploads';
-    this.ensureUploadDirectory();
+    this.uploadsDir = path.join(process.cwd(), 'uploads');
+    this.ensureUploadsDirectory();
   }
 
-  private ensureUploadDirectory(): void {
-    // For now, we'll just ensure the directory exists in memory
-    // In a real implementation, you'd use fs.mkdirSync
-  }
-
-  private generateId(): string {
-    return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-  }
-
-  async addFile(filePath: string, originalName: string, mimeType: string): Promise<string> {
-    const fileId = this.generateId();
-    
-    const fileInfo: FileInfo = {
-      id: fileId,
-      name: originalName,
-      size: 0, // Would get from fs.statSync in real implementation
-      mimeType,
-      uploadedAt: new Date(),
-      path: filePath
-    };
-
-    this.fileRegistry.set(fileId, fileInfo);
-    return fileId;
-  }
-
-  async getFile(fileId: string): Promise<FileInfo | null> {
-    return this.fileRegistry.get(fileId) || null;
-  }
-
-  async listFiles(): Promise<FileInfo[]> {
-    return Array.from(this.fileRegistry.values());
-  }
-
-  async deleteFile(fileId: string): Promise<boolean> {
-    const fileInfo = this.fileRegistry.get(fileId);
-    if (!fileInfo) {
-      return false;
-    }
-
-    try {
-      // In real implementation, would delete physical file
-      // fs.unlinkSync(fileInfo.path);
-      
-      // Remove from registry
-      this.fileRegistry.delete(fileId);
-      return true;
-    } catch (error) {
-      console.error('Error deleting file:', error);
-      return false;
+  private ensureUploadsDirectory(): void {
+    if (!fs.existsSync(this.uploadsDir)) {
+      fs.mkdirSync(this.uploadsDir, { recursive: true });
     }
   }
 
-  async saveUploadedFile(buffer: Buffer, originalName: string, mimeType: string): Promise<string> {
-    const fileId = this.generateId();
-    
-    // Add to registry with the actual buffer data
-    const fileInfo: FileInfo = {
+  addFile(file: Express.Multer.File, ownerId: string): FileMetadata {
+    const fileId = uuidv4();
+    const fileExtension = path.extname(file.originalname);
+    const filename = `${fileId}${fileExtension}`;
+    const filePath = path.join(this.uploadsDir, filename);
+
+    // Move file to uploads directory
+    fs.writeFileSync(filePath, file.buffer);
+
+    const metadata: FileMetadata = {
       id: fileId,
-      name: originalName,
-      size: buffer.length,
-      mimeType,
+      originalName: file.originalname,
+      filename,
+      mimetype: file.mimetype,
+      size: file.size,
       uploadedAt: new Date(),
-      path: `memory://${fileId}` // Indicate this is stored in memory
+      ownerId
     };
 
-    this.fileRegistry.set(fileId, fileInfo);
-    
-    // Store the actual file content in memory (in a real app, this would be saved to disk)
+    this.files.set(fileId, metadata);
+    return metadata;
+  }
+
+  getFile(fileId: string): FileMetadata | undefined {
+    return this.files.get(fileId);
+  }
+
+  getFilesByOwner(ownerId: string): FileMetadata[] {
+    return Array.from(this.files.values()).filter(file => file.ownerId === ownerId);
+  }
+
+  getAllFiles(): FileMetadata[] {
+    return Array.from(this.files.values());
+  }
+
+  getFilePath(fileId: string): string | null {
+    const file = this.files.get(fileId);
+    if (!file) return null;
+
+    const filePath = path.join(this.uploadsDir, file.filename);
+    return fs.existsSync(filePath) ? filePath : null;
+  }
+
+  deleteFile(fileId: string, requesterId: string): boolean {
+    const file = this.files.get(fileId);
+    if (!file || file.ownerId !== requesterId) {
+      return false;
+    }
+
+    const filePath = path.join(this.uploadsDir, file.filename);
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+
+    this.files.delete(fileId);
+    return true;
+  }
+}
     this.fileContent.set(fileId, buffer);
     
     return fileId;

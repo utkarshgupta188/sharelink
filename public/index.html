@@ -4,315 +4,289 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>P2P File Sharing</title>
+    <script src="/socket.io/socket.io.js"></script>
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f5f5f5;
-        }
-        
-        .container {
-            background: white;
-            border-radius: 10px;
-            padding: 30px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        
-        h1 {
-            color: #333;
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        
-        .section {
-            margin-bottom: 30px;
-            padding: 20px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            background-color: #fafafa;
-        }
-        
-        .section h2 {
-            color: #555;
-            margin-top: 0;
-        }
-        
-        .form-group {
-            margin-bottom: 15px;
-        }
-        
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-            color: #555;
-        }
-        
-        input[type="file"], input[type="text"], select {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            font-size: 14px;
-        }
-        
-        button {
-            background-color: #007bff;
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            margin-right: 10px;
-            margin-top: 10px;
-        }
-        
-        button:hover {
-            background-color: #0056b3;
-        }
-        
-        button:disabled {
-            background-color: #cccccc;
-            cursor: not-allowed;
-        }
-        
-        .otp-display {
-            background-color: #e7f3ff;
-            border: 2px solid #007bff;
-            border-radius: 6px;
-            padding: 15px;
-            margin: 10px 0;
-            text-align: center;
-            font-size: 16px;
-            color: #007bff;
-        }
-        
-        .otp-code {
-            font-size: 28px;
-            font-weight: bold;
-            letter-spacing: 4px;
-            margin: 10px 0;
-            color: #007bff;
-        }
-        
-        .status {
-            padding: 10px;
-            border-radius: 4px;
-            margin: 10px 0;
-        }
-        
-        .status.success {
-            background-color: #d4edda;
-            border: 1px solid #c3e6cb;
-            color: #155724;
-        }
-        
-        .status.error {
-            background-color: #f8d7da;
-            border: 1px solid #f5c6cb;
-            color: #721c24;
-        }
-        
-        .status.info {
-            background-color: #cce7ff;
-            border: 1px solid #99d6ff;
-            color: #004085;
-        }
-        
-        .peers-list {
-            max-height: 200px;
-            overflow-y: auto;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            padding: 10px;
-            background: white;
-        }
-        
-        .peer-item {
-            padding: 8px;
-            border-bottom: 1px solid #eee;
-            cursor: pointer;
-        }
-        
-        .peer-item:hover {
-            background-color: #f0f0f0;
-        }
-        
-        .peer-item.selected {
-            background-color: #007bff;
-            color: white;
-        }
-        
-        .progress-bar {
-            width: 100%;
-            background-color: #e0e0e0;
-            border-radius: 4px;
-            overflow: hidden;
-            margin: 10px 0;
-        }
-        
-        .progress-fill {
-            height: 20px;
-            background-color: #28a745;
-            transition: width 0.3s ease;
-            text-align: center;
-            line-height: 20px;
-            color: white;
-            font-size: 12px;
-        }
-        
-        .connection-status {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 10px 15px;
-            border-radius: 20px;
-            font-weight: bold;
-            z-index: 1000;
-        }
-        
-        .connection-status.connected {
-            background-color: #28a745;
-            color: white;
-        }
-        
-        .connection-status.disconnected {
-            background-color: #dc3545;
-            color: white;
-        }
-        
-        #filesList {
-            max-height: 300px;
-            overflow-y: auto;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            padding: 10px;
-            background: white;
-        }
-        
-        .file-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px;
-            border-bottom: 1px solid #eee;
-        }
-        
-        .file-info {
-            flex-grow: 1;
-        }
-        
-        .file-name {
-            font-weight: bold;
-            color: #333;
-        }
-        
-        .file-size {
-            color: #666;
-            font-size: 12px;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .header { text-align: center; margin-bottom: 30px; color: #333; }
+        .section { margin-bottom: 30px; padding: 20px; border: 1px solid #ddd; border-radius: 6px; }
+        .section h3 { margin-bottom: 15px; color: #555; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+        .form-group input, .form-group select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+        .btn { background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px; }
+        .btn:hover { background: #0056b3; }
+        .btn-success { background: #28a745; }
+        .btn-danger { background: #dc3545; }
+        .status { padding: 10px; border-radius: 4px; margin: 10px 0; }
+        .status.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .status.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .status.info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .file-list, .peer-list { list-style: none; }
+        .file-item, .peer-item { padding: 10px; border: 1px solid #eee; margin-bottom: 5px; border-radius: 4px; background: #f9f9f9; }
+        .file-item:hover, .peer-item:hover { background: #f0f0f0; }
+        .hidden { display: none; }
+        .two-column { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        @media (max-width: 768px) { .two-column { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
-    <div class="connection-status" id="connectionStatus">Connecting...</div>
-    
     <div class="container">
-        <h1>🔗 True P2P File Sharing</h1>
-        
-        <!-- File Upload Section -->
-        <div class="section">
-            <h2>📤 Share a File (P2P)</h2>
-            <div class="form-group">
-                <label for="fileInput">Select File to Share via P2P:</label>
-                <input type="file" id="fileInput" accept="*/*">
-            </div>
-            <button onclick="uploadFile()">Announce File & Generate OTP</button>
-            <div id="uploadStatus"></div>
-            <div id="otpDisplay"></div>
+        <div class="header">
+            <h1>🔄 P2P File Sharing</h1>
+            <p>Secure peer-to-peer file sharing with OTP authentication</p>
         </div>
-        
-        <!-- File Download Section -->
+
         <div class="section">
-            <h2>📥 Download via P2P</h2>
+            <h3>👤 Peer Registration & Authentication</h3>
             <div class="form-group">
-                <label for="otpInput">Enter P2P OTP:</label>
-                <input type="text" id="otpInput" placeholder="Enter 6-digit OTP" maxlength="6">
+                <label for="username">Username:</label>
+                <input type="text" id="username" placeholder="Enter your username">
             </div>
-            <button onclick="verifyOTP()">Connect & Download via P2P</button>
-            <div id="downloadStatus"></div>
-            <div id="downloadProgress"></div>
+            <button class="btn" onclick="registerPeer()">Register as Peer</button>
+            
+            <div id="otp-section" class="hidden">
+                <div class="form-group">
+                    <label for="otp">Enter OTP:</label>
+                    <input type="text" id="otp" placeholder="6-digit OTP">
+                </div>
+                <button class="btn btn-success" onclick="authenticateWithOTP()">Authenticate</button>
+            </div>
+            
+            <div id="status"></div>
         </div>
-        
-        <!-- Transfer Status Section -->
+
+        <div class="two-column">
+            <div class="section">
+                <h3>📁 File Upload</h3>
+                <div class="form-group">
+                    <label for="fileInput">Select File:</label>
+                    <input type="file" id="fileInput">
+                </div>
+                <button class="btn" onclick="uploadFile()">Upload File</button>
+            </div>
+
+            <div class="section">
+                <h3>👥 Connected Peers</h3>
+                <ul id="peerList" class="peer-list"></ul>
+                <button class="btn" onclick="refreshPeers()">Refresh Peers</button>
+            </div>
+        </div>
+
         <div class="section">
-            <h2>📊 Transfer Status</h2>
-            <div id="transferStatus"></div>
+            <h3>📋 Available Files</h3>
+            <ul id="fileList" class="file-list"></ul>
+            <button class="btn" onclick="refreshFiles()">Refresh Files</button>
         </div>
     </div>
 
-    <script src="/socket.io/socket.io.js"></script>
     <script>
-        // Initialize Socket.IO for real-time P2P coordination
-        const socket = io();
-        
-        // P2P state management
-        let currentOTP = null;
-        const localFiles = new Map(); // Store files locally for P2P
-        
-        // Connection status
-        socket.on('connect', () => {
-            console.log('✅ Socket.IO connected:', socket.id);
-            updateConnectionStatus(true);
-        });
-        
-        socket.on('disconnect', () => {
-            console.log('❌ Socket.IO disconnected');
-            updateConnectionStatus(false);
-        });
-        
-        socket.on('connect_error', (error) => {
-            console.error('🔌 Socket.IO connection error:', error);
-            updateConnectionStatus(false);
-        });
-        
-        function updateConnectionStatus(connected) {
-            const status = document.getElementById('connectionStatus');
-            if (connected) {
-                status.textContent = '✅ Connected';
-                status.className = 'connection-status connected';
-                
-                // Check if we're in a cloud environment that might block P2P
-                if (window.location.hostname.includes('render.com') || 
-                    window.location.hostname.includes('herokuapp.com') ||
-                    window.location.hostname.includes('vercel.app') ||
-                    window.location.hostname.includes('netlify.app')) {
-                    console.log('🌐 Cloud environment detected - P2P may have limitations');
-                    showStatus('generalStatus', '🌐 Cloud environment detected. P2P connections may be limited by hosting provider.', 'warning');
+        let socket;
+        let currentPeerId = null;
+        let isAuthenticated = false;
+
+        // Initialize socket connection
+        function initSocket() {
+            socket = io();
+            
+            socket.on('connect', () => {
+                showStatus('Connected to server', 'success');
+            });
+
+            socket.on('peer:registered', (data) => {
+                currentPeerId = data.peerId;
+                showStatus(`Registered as peer: ${currentPeerId}`, 'success');
+                generateOTP();
+            });
+
+            socket.on('auth:success', () => {
+                isAuthenticated = true;
+                showStatus('Authentication successful!', 'success');
+                document.getElementById('otp-section').classList.add('hidden');
+                refreshPeers();
+                refreshFiles();
+            });
+
+            socket.on('auth:failed', (data) => {
+                showStatus(`Authentication failed: ${data.message}`, 'error');
+            });
+
+            socket.on('peers:updated', (data) => {
+                updatePeerList(data.peers);
+            });
+
+            socket.on('file:incoming', (data) => {
+                showStatus(`File shared by ${data.fromPeer.username}`, 'info');
+                refreshFiles();
+            });
+        }
+
+        function showStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = `status ${type}`;
+            statusDiv.textContent = message;
+        }
+
+        async function registerPeer() {
+            const username = document.getElementById('username').value.trim();
+            if (!username) {
+                showStatus('Please enter a username', 'error');
+                return;
+            }
+
+            socket.emit('peer:register', { username });
+        }
+
+        async function generateOTP() {
+            try {
+                const response = await fetch('/api/otp/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ peerId: currentPeerId })
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    showStatus(`Your OTP: ${data.token} (Valid for 5 minutes)`, 'info');
+                    document.getElementById('otp-section').classList.remove('hidden');
+                } else {
+                    showStatus(`Error: ${data.error}`, 'error');
                 }
+            } catch (error) {
+                showStatus('Failed to generate OTP', 'error');
+            }
+        }
+
+        async function authenticateWithOTP() {
+            const otp = document.getElementById('otp').value.trim();
+            if (!otp || !currentPeerId) {
+                showStatus('Please enter OTP', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/otp/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token: otp, peerId: currentPeerId })
+                });
+
+                const data = await response.json();
+                if (!response.ok) {
+                    showStatus(`Authentication failed: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus('Authentication failed', 'error');
+            }
+        }
+
+        async function uploadFile() {
+            if (!isAuthenticated) {
+                showStatus('Please authenticate first', 'error');
+                return;
+            }
+
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            if (!file) {
+                showStatus('Please select a file', 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('peerId', currentPeerId);
+
+            try {
+                const response = await fetch('/api/files/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    showStatus('File uploaded successfully!', 'success');
+                    fileInput.value = '';
+                    refreshFiles();
+                } else {
+                    showStatus(`Upload failed: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus('Upload failed', 'error');
+            }
+        }
+
+        async function refreshFiles() {
+            try {
+                const response = await fetch('/api/files');
+                const data = await response.json();
+                updateFileList(data.files || []);
+            } catch (error) {
+                showStatus('Failed to refresh files', 'error');
+            }
+        }
+
+        async function refreshPeers() {
+            socket.emit('peer:discover');
+        }
+
+        function updateFileList(files) {
+            const fileList = document.getElementById('fileList');
+            fileList.innerHTML = '';
+
+            files.forEach(file => {
+                const li = document.createElement('li');
+                li.className = 'file-item';
+                li.innerHTML = `
+                    <strong>${file.originalName}</strong> 
+                    (${formatFileSize(file.size)}) 
+                    <small>by ${file.ownerId}</small>
+                    <button class="btn" onclick="downloadFile('${file.id}', '${file.originalName}')" style="float: right; margin-left: 10px;">Download</button>
+                `;
+                fileList.appendChild(li);
+            });
+        }
+
+        function updatePeerList(peers) {
+            const peerList = document.getElementById('peerList');
+            peerList.innerHTML = '';
+
+            peers.forEach(peer => {
+                if (peer.id !== currentPeerId) {
+                    const li = document.createElement('li');
+                    li.className = 'peer-item';
+                    li.innerHTML = `
+                        <strong>${peer.username}</strong> 
+                        <small>(${peer.id})</small>
+                        <small>Connected: ${new Date(peer.connectedAt).toLocaleTimeString()}</small>
+                    `;
+                    peerList.appendChild(li);
+                }
+            });
+        }
+
+        function downloadFile(fileId, filename) {
+            window.open(`/api/files/${fileId}/download`, '_blank');
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // Initialize the application
+        initSocket();
+    </script>
+</body>
+</html>
             } else {
                 status.textContent = '❌ Disconnected';
                 status.className = 'connection-status disconnected';
             }
-        }
-        
-        // Fallback mechanism for when P2P fails in cloud environments
-        function showP2PFallbackOptions() {
-            const fallbackHtml = `
-                <div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; margin: 10px 0; border-radius: 5px;">
-                    <h4>🌐 P2P Limited in Cloud Environment</h4>
-                    <p>Direct peer-to-peer connections may be blocked by the hosting provider. Alternative options:</p>
-                    <ul>
-                        <li><strong>Local Network:</strong> Works best on same WiFi/LAN</li>
-                        <li><strong>VPN:</strong> Both users on same VPN network</li>
-                        <li><strong>Alternative:</strong> Use traditional file sharing services</li>
-                    </ul>
-                    <p><small>This is a limitation of cloud hosting platforms, not the application.</small></p>
-                </div>
-            `;
-            document.getElementById('generalStatus').innerHTML = fallbackHtml;
         }
         
         // Global P2P File sharing system
@@ -322,31 +296,19 @@
         let peerConnections = new Map(); // WebRTC connections
         // let currentOTP = null; // already declared above
 
-        // WebRTC configuration optimized for cloud deployment (Render, etc.)
+        // WebRTC configuration with enhanced settings for production deployment
         const rtcConfig = {
             iceServers: [
-                // Google STUN servers
                 { urls: 'stun:stun.l.google.com:19302' },
                 { urls: 'stun:stun1.l.google.com:19302' },
                 { urls: 'stun:stun2.l.google.com:19302' },
                 { urls: 'stun:stun3.l.google.com:19302' },
-                { urls: 'stun:stun4.l.google.com:19302' },
-                // Additional STUN servers for better connectivity
-                { urls: 'stun:stun.stunprotocol.org:3478' },
-                { urls: 'stun:stun.sipgate.net:3478' },
-                { urls: 'stun:stun.ekiga.net' },
-                { urls: 'stun:stun.ideasip.com' },
-                { urls: 'stun:stun.voiparound.com' },
-                { urls: 'stun:stun.voipbuster.com' },
-                { urls: 'stun:stun.voipstunt.com' }
+                { urls: 'stun:stun4.l.google.com:19302' }
             ],
-            iceCandidatePoolSize: 20, // More ICE candidates for cloud environments
+            iceCandidatePoolSize: 10, // Generate more ICE candidates for better connectivity
             bundlePolicy: 'max-bundle',
             rtcpMuxPolicy: 'require',
-            iceTransportPolicy: 'all',
-            // Enhanced settings for cloud/NAT traversal
-            iceGatheringTimeoutMs: 10000,
-            continualGatheringPolicy: 'gather_continually'
+            iceTransportPolicy: 'all'
         };
 
         async function uploadFile() {
@@ -464,7 +426,7 @@
                 console.log('🔍 Requesting file from P2P network, OTP:', otp);
                 
                 // First verify OTP with server, then request P2P transfer
-                const response = await fetch('/api/request-download', {
+                const response = await fetch('/api/request-file', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -531,19 +493,6 @@
                 
                 const peerConnection = new RTCPeerConnection(rtcConfig);
                 peerConnections.set(ownerId, peerConnection);
-                
-                // Add connection state monitoring for cloud deployment debugging
-                peerConnection.oniceconnectionstatechange = () => {
-                    console.log(`🔗 ICE Connection State (${ownerId}):`, peerConnection.iceConnectionState);
-                    if (peerConnection.iceConnectionState === 'failed') {
-                        console.error('❌ WebRTC connection failed - may be blocked by cloud provider');
-                        showStatus('downloadStatus', 'P2P connection failed. Cloud environment may block direct connections.', 'error');
-                    }
-                };
-                
-                peerConnection.onconnectionstatechange = () => {
-                    console.log(`📡 Connection State (${ownerId}):`, peerConnection.connectionState);
-                };
                 
                 // Set up ICE candidate handling
                 peerConnection.onicecandidate = (event) => {
@@ -854,19 +803,6 @@
             try {
                 const peerConnection = new RTCPeerConnection(rtcConfig);
                 peerConnections.set(senderId, peerConnection);
-                
-                // Add connection state monitoring for cloud deployment debugging
-                peerConnection.oniceconnectionstatechange = () => {
-                    console.log(`🔗 ICE Connection State (${senderId}):`, peerConnection.iceConnectionState);
-                    if (peerConnection.iceConnectionState === 'failed') {
-                        console.error('❌ WebRTC connection failed - may be blocked by cloud provider');
-                        showStatus('uploadStatus', 'P2P connection failed. Cloud environment may block direct connections.', 'error');
-                    }
-                };
-                
-                peerConnection.onconnectionstatechange = () => {
-                    console.log(`📡 Connection State (${senderId}):`, peerConnection.connectionState);
-                };
                 
                 // Set up ICE candidate handling
                 peerConnection.onicecandidate = (event) => {

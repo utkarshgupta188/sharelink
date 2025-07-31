@@ -2,10 +2,12 @@ services:
   - type: web
     name: p2p-file-sharing
     env: node
-    buildCommand: npm ci && echo "Files after build:" && ls -la
-    startCommand: node server.js
+    buildCommand: npm install && npm run build
+    startCommand: npm start
     envVars:
       - key: NODE_ENV
         value: production
-    healthCheckPath: /api/health
-    autoDeploy: true
+    disk:
+      name: uploads
+      mountPath: /opt/render/project/src/uploads
+      sizeGB: 1

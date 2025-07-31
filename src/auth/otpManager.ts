@@ -1,98 +1,82 @@
+import * as speakeasy from 'speakeasy';
+import { v4 as uuidv4 } from 'uuid';
+
 interface OTPData {
-  fileId: string;
-  userId: string;
-  timestamp: number;
-  otp: string;
+  secret: string;
+  token: string;
+  expiresAt: number;
+  peerId: string;
 }
 
 export class OTPManager {
   private otpStore: Map<string, OTPData> = new Map();
-  private readonly OTP_VALIDITY_MINUTES = 5;
+  private readonly OTP_EXPIRY = 5 * 60 * 1000; // 5 minutes
 
-  async generateOTP(fileId: string, userId: string): Promise<string> {
-    // Generate a simple 6-digit OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  generateOTP(peerId: string): { token: string; secret: string } {
+    const secret = speakeasy.generateSecret({
+      name: `P2P File Share - ${peerId}`,
+      length: 20
+    });
+
+    const token = speakeasy.totp({
+      secret: secret.base32,
+      encoding: 'base32',
+      step: 300, // 5 minutes
+      window: 1
+    });
 
     const otpData: OTPData = {
-      fileId,
-      userId,
-      timestamp: Date.now(),
-      otp
+      secret: secret.base32,
+      token,
+      expiresAt: Date.now() + this.OTP_EXPIRY,
+      peerId
     };
 
-    this.otpStore.set(otp, otpData);
+    this.otpStore.set(token, otpData);
 
     // Clean up expired OTPs
     this.cleanupExpiredOTPs();
 
-    return otp;
+    return { token, secret: secret.base32 };
   }
 
-  async verifyOTP(otp: string): Promise<boolean> {
-    const otpData = this.otpStore.get(otp);
+  verifyOTP(token: string, peerId: string): boolean {
+    const otpData = this.otpStore.get(token);
     
     if (!otpData) {
       return false;
     }
 
-    // Check if OTP is expired
-    const now = Date.now();
-    const expiryTime = otpData.timestamp + (this.OTP_VALIDITY_MINUTES * 60 * 1000);
-    
-    if (now > expiryTime) {
-      this.otpStore.delete(otp);
+    if (Date.now() > otpData.expiresAt) {
+      this.otpStore.delete(token);
       return false;
     }
 
-    return true;
-  }
+    if (otpData.peerId !== peerId) {
+      return false;
+    }
 
-  async getFileInfo(otp: string): Promise<OTPData | null> {
-    return this.otpStore.get(otp) || null;
+    const isValid = speakeasy.totp.verify({
+      secret: otpData.secret,
+      encoding: 'base32',
+      token,
+      step: 300,
+      window: 1
+    });
+
+    if (isValid) {
+      this.otpStore.delete(token); // OTP is one-time use
+    }
+
+    return isValid;
   }
 
   private cleanupExpiredOTPs(): void {
     const now = Date.now();
-    const expiryThreshold = this.OTP_VALIDITY_MINUTES * 60 * 1000;
-
-    for (const [otp, data] of this.otpStore.entries()) {
-      if (now - data.timestamp > expiryThreshold) {
-        this.otpStore.delete(otp);
+    for (const [token, data] of this.otpStore.entries()) {
+      if (now > data.expiresAt) {
+        this.otpStore.delete(token);
       }
     }
-  }
-
-  // Get all active OTPs (for debugging/admin purposes)
-  getActiveOTPs(): OTPData[] {
-    this.cleanupExpiredOTPs();
-    return Array.from(this.otpStore.values());
-  }
-
-  // Manually expire an OTP
-  expireOTP(otp: string): boolean {
-    return this.otpStore.delete(otp);
-  }
-
-  // Set a custom OTP for a file
-  async setCustomOTP(fileId: string, customOtp: string): Promise<void> {
-    const existingData = Array.from(this.otpStore.values()).find(data => data.fileId === fileId);
-    if (existingData) {
-      // Remove old OTP and set new one
-      this.otpStore.delete(existingData.otp);
-    }
-
-    const otpData: OTPData = {
-      fileId,
-      userId: 'system',
-      timestamp: Date.now(),
-      otp: customOtp
-    };
-
-    this.otpStore.set(customOtp, otpData);
-  }
-
-  // Remove an OTP
-  async removeOTP(otp: string): Promise<boolean> {
-    return this.otpStore.delete(otp);
   }
 }
