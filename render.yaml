@@ -2,8 +2,8 @@ services:
   - type: web
     name: p2p-file-sharing
     env: node
-    buildCommand: npm ci
-    startCommand: node index.js
+    buildCommand: npm ci && echo "Files after build:" && ls -la
+    startCommand: node server.js
     envVars:
       - key: NODE_ENV
         value: production
