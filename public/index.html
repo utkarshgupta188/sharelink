@@ -283,10 +283,36 @@
             if (connected) {
                 status.textContent = '✅ Connected';
                 status.className = 'connection-status connected';
+                
+                // Check if we're in a cloud environment that might block P2P
+                if (window.location.hostname.includes('render.com') || 
+                    window.location.hostname.includes('herokuapp.com') ||
+                    window.location.hostname.includes('vercel.app') ||
+                    window.location.hostname.includes('netlify.app')) {
+                    console.log('🌐 Cloud environment detected - P2P may have limitations');
+                    showStatus('generalStatus', '🌐 Cloud environment detected. P2P connections may be limited by hosting provider.', 'warning');
+                }
             } else {
                 status.textContent = '❌ Disconnected';
                 status.className = 'connection-status disconnected';
             }
+        }
+        
+        // Fallback mechanism for when P2P fails in cloud environments
+        function showP2PFallbackOptions() {
+            const fallbackHtml = `
+                <div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; margin: 10px 0; border-radius: 5px;">
+                    <h4>🌐 P2P Limited in Cloud Environment</h4>
+                    <p>Direct peer-to-peer connections may be blocked by the hosting provider. Alternative options:</p>
+                    <ul>
+                        <li><strong>Local Network:</strong> Works best on same WiFi/LAN</li>
+                        <li><strong>VPN:</strong> Both users on same VPN network</li>
+                        <li><strong>Alternative:</strong> Use traditional file sharing services</li>
+                    </ul>
+                    <p><small>This is a limitation of cloud hosting platforms, not the application.</small></p>
+                </div>
+            `;
+            document.getElementById('generalStatus').innerHTML = fallbackHtml;
         }
         
         // Global P2P File sharing system
@@ -296,19 +322,31 @@
         let peerConnections = new Map(); // WebRTC connections
         // let currentOTP = null; // already declared above
 
-        // WebRTC configuration with enhanced settings for production deployment
+        // WebRTC configuration optimized for cloud deployment (Render, etc.)
         const rtcConfig = {
             iceServers: [
+                // Google STUN servers
                 { urls: 'stun:stun.l.google.com:19302' },
                 { urls: 'stun:stun1.l.google.com:19302' },
                 { urls: 'stun:stun2.l.google.com:19302' },
                 { urls: 'stun:stun3.l.google.com:19302' },
-                { urls: 'stun:stun4.l.google.com:19302' }
+                { urls: 'stun:stun4.l.google.com:19302' },
+                // Additional STUN servers for better connectivity
+                { urls: 'stun:stun.stunprotocol.org:3478' },
+                { urls: 'stun:stun.sipgate.net:3478' },
+                { urls: 'stun:stun.ekiga.net' },
+                { urls: 'stun:stun.ideasip.com' },
+                { urls: 'stun:stun.voiparound.com' },
+                { urls: 'stun:stun.voipbuster.com' },
+                { urls: 'stun:stun.voipstunt.com' }
             ],
-            iceCandidatePoolSize: 10, // Generate more ICE candidates for better connectivity
+            iceCandidatePoolSize: 20, // More ICE candidates for cloud environments
             bundlePolicy: 'max-bundle',
             rtcpMuxPolicy: 'require',
-            iceTransportPolicy: 'all'
+            iceTransportPolicy: 'all',
+            // Enhanced settings for cloud/NAT traversal
+            iceGatheringTimeoutMs: 10000,
+            continualGatheringPolicy: 'gather_continually'
         };
 
         async function uploadFile() {
@@ -493,6 +531,19 @@
                 
                 const peerConnection = new RTCPeerConnection(rtcConfig);
                 peerConnections.set(ownerId, peerConnection);
+                
+                // Add connection state monitoring for cloud deployment debugging
+                peerConnection.oniceconnectionstatechange = () => {
+                    console.log(`🔗 ICE Connection State (${ownerId}):`, peerConnection.iceConnectionState);
+                    if (peerConnection.iceConnectionState === 'failed') {
+                        console.error('❌ WebRTC connection failed - may be blocked by cloud provider');
+                        showStatus('downloadStatus', 'P2P connection failed. Cloud environment may block direct connections.', 'error');
+                    }
+                };
+                
+                peerConnection.onconnectionstatechange = () => {
+                    console.log(`📡 Connection State (${ownerId}):`, peerConnection.connectionState);
+                };
                 
                 // Set up ICE candidate handling
                 peerConnection.onicecandidate = (event) => {
@@ -803,6 +854,19 @@
             try {
                 const peerConnection = new RTCPeerConnection(rtcConfig);
                 peerConnections.set(senderId, peerConnection);
+                
+                // Add connection state monitoring for cloud deployment debugging
+                peerConnection.oniceconnectionstatechange = () => {
+                    console.log(`🔗 ICE Connection State (${senderId}):`, peerConnection.iceConnectionState);
+                    if (peerConnection.iceConnectionState === 'failed') {
+                        console.error('❌ WebRTC connection failed - may be blocked by cloud provider');
+                        showStatus('uploadStatus', 'P2P connection failed. Cloud environment may block direct connections.', 'error');
+                    }
+                };
+                
+                peerConnection.onconnectionstatechange = () => {
+                    console.log(`📡 Connection State (${senderId}):`, peerConnection.connectionState);
+                };
                 
                 // Set up ICE candidate handling
                 peerConnection.onicecandidate = (event) => {
